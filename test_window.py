@@ -82,7 +82,7 @@ class PoggendorffIllusion(tk.Frame):
     scale = 7
     line_colours = ['red', 'blue']
 
-    def __init__(self, master, user_id):
+    def __init__(self, master, user_id, next_window_callback):
         super().__init__(master)
         self.pack(fill='both', expand=True)
 
@@ -91,6 +91,7 @@ class PoggendorffIllusion(tk.Frame):
         self.showTimer = False
 
         self.user_id = user_id
+        self.next_window_callback = next_window_callback
 
         self.illusions = [
             {"w_param": 10, "alpha": 45, "beta": 0, "vert_length": 100, "repeat": 3},
@@ -231,11 +232,7 @@ class PoggendorffIllusion(tk.Frame):
 
     def switchPage(self):
         self.stop_countdown()
-        self.grid_forget()
-        self.pack_forget()
-        # Здесь вы можете добавить код для переключения на другую страницу, например:
-        # newPage = testsPage.testsGUI(self.master, self.user_id, True, "Poggendorf Illusion")
-        # newPage.grid(row=0, column=0, sticky="nsew")
+        self.next_window_callback()
 
     def stop_countdown(self):
         self.countdown_running = False

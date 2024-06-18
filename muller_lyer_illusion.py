@@ -77,9 +77,10 @@ class MullerLyerIllusion(tk.Frame):
     circles_fill = ['blue', 'blue', 'red']
     circles_outline = ['black', 'black', 'black']
 
-    def __init__(self, master, user_id: int):
+    def __init__(self, master, user_id: int, next_window_callback):
         super().__init__(master)
         self.user_id = user_id
+        self.next_window_callback = next_window_callback
         self.pack(fill='both', expand=True)
 
         self.illusions = [
@@ -90,7 +91,7 @@ class MullerLyerIllusion(tk.Frame):
         self.illusion_index = 0
         self.load_next_illusion()
 
-        self.canvas = tk.Canvas(self, bg="white", width=800, height=600)  # Установите фиксированные размеры холста
+        self.canvas = tk.Canvas(self, bg="white", width=800, height=600)
         self.canvas.pack(side='left', fill='both', expand=True)
 
         self.interaction_panel = tk.Frame(self)
@@ -137,7 +138,7 @@ class MullerLyerIllusion(tk.Frame):
     def draw_illusion(self, circle_pos=0):
         self.canvas.delete('all')
 
-        canvas_width = 800  # Используйте фиксированные размеры холста
+        canvas_width = 800
         canvas_height = 600
         self.ill_center = Vector2D(canvas_width // 2, canvas_height // 2)
         
@@ -169,7 +170,6 @@ class MullerLyerIllusion(tk.Frame):
     def submit_data(self):
         dpi = self.winfo_fpixels('1i')
         
-        # Рассчитать L_реф и L_тест
         L_ref = 2 * self.d_param
         L_test = (self.subject_response.x - self.r_param) - (self.ill_center.x + self.r_param)
         
@@ -191,5 +191,5 @@ class MullerLyerIllusion(tk.Frame):
             self.switchPage()
 
     def switchPage(self):
-        self.pack_forget()  
-
+        self.pack_forget()
+        self.next_window_callback()

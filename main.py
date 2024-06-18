@@ -1,7 +1,7 @@
 import tkinter as tk
 from login_window import LoginWindow
 from test_selection_window import TestSelectionWindow
-from test_window import PoggendorffIllusion, Vector2D
+from test_window import PoggendorffIllusion
 from muller_lyer_illusion import MullerLyerIllusion
 from verticalhorisonatl import VerticalHorizontalIllusion
 
@@ -21,11 +21,11 @@ class App:
     def show_test_window(self, test_type):
         self.clear_window()
         if test_type == "Poggendorff":
-            self.test_window = PoggendorffIllusion(self.root, user_id=1)
+            self.test_window = PoggendorffIllusion(self.root, user_id=1, next_window_callback=self.show_test_selection_window)
         elif test_type == "MullerLyer":
-            self.test_window = MullerLyerIllusion(self.root, user_id=1)
+            self.test_window = MullerLyerIllusion(self.root, user_id=1, next_window_callback=self.show_test_selection_window)
         elif test_type == "VerticalHorizontal":
-            self.test_window = VerticalHorizontalIllusion(self.root, user_id=1)
+            self.test_window = VerticalHorizontalIllusion(self.root, user_id=1, next_window_callback=self.show_test_selection_window)
         self.test_window.pack(fill='both', expand=True)
 
     def clear_window(self):

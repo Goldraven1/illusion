@@ -136,9 +136,10 @@ class VerticalHorizontalIllusion(tk.Frame):
         }
     ]
     
-    def __init__(self, master, user_id: int):
+    def __init__(self, master, user_id: int, next_window_callback):
         super().__init__(master)
         self.user_id = user_id
+        self.next_window_callback = next_window_callback
         self.pack(fill='both', expand=True)
 
         self.illusion_index = 0
@@ -182,8 +183,8 @@ class VerticalHorizontalIllusion(tk.Frame):
     def draw_illusion(self, length=35):
         self.canvas.delete('all')
 
-        canvas_width = 1200
-        canvas_height = 800
+        canvas_width = 700
+        canvas_height = 500
         self.ill_center = Vector2D(canvas_width // 2, canvas_height // 2)
 
         horizontal_line = Line(Vector2D(self.ill_center.x - self.l_param / 2, self.ill_center.y), Vector2D(1, 0), self.l_param)
@@ -227,4 +228,15 @@ class VerticalHorizontalIllusion(tk.Frame):
 
     def switchPage(self):
         self.pack_forget()
-        tk.Label(self.master, text="Тест завершен").pack(fill='both', expand=True)
+        self.next_window_callback()
+
+if __name__ == "__main__":
+    def show_test_selection_window():
+        root = tk.Tk()
+        tk.Label(root, text="Выберите тест").pack()
+        root.mainloop()
+
+    root = tk.Tk()
+    app = VerticalHorizontalIllusion(master=root, user_id=1, next_window_callback=show_test_selection_window)
+    app.pack(fill="both", expand=True)
+    root.mainloop()
