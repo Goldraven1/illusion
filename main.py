@@ -3,6 +3,7 @@ from login_window import LoginWindow
 from test_selection_window import TestSelectionWindow
 from test_window import PoggendorffIllusion, Vector2D
 from muller_lyer_illusion import MullerLyerIllusion
+from verticalhorisonatl import VerticalHorizontalIllusion
 
 class App:
     def __init__(self, root):
@@ -24,8 +25,7 @@ class App:
         elif test_type == "MullerLyer":
             self.test_window = MullerLyerIllusion(self.root, user_id=1)
         elif test_type == "VerticalHorizontal":
-            # Поскольку реализация этого теста отсутствует, вы можете добавить его здесь.
-            pass
+            self.test_window = VerticalHorizontalIllusion(self.root, user_id=1)
         self.test_window.pack(fill='both', expand=True)
 
     def clear_window(self):
