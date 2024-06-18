@@ -9,11 +9,15 @@ class TestSelectionWindow:
     def create_widgets(self):
         tk.Label(self.root, text="Выберите тип теста:").grid(row=0, column=0, columnspan=2)
 
-        self.tests = ["Иллюзия Поггендорфа", "Вертикально-горизонтальная иллюзия", "Иллюзия расстояния между краями окружностей"]
-        self.test_var = tk.StringVar(value=self.tests[0])
+        self.tests = [
+            ("Иллюзия Поггендорфа", "Poggendorff"),
+            ("Вертикально-горизонтальная иллюзия", "VerticalHorizontal"),
+            ("Иллюзия расстояния между краями окружностей", "MullerLyer")
+        ]
+        self.test_var = tk.StringVar(value=self.tests[0][1])
 
-        for i, test in enumerate(self.tests):
-            tk.Radiobutton(self.root, text=test, variable=self.test_var, value=test).grid(row=i+1, column=0, columnspan=2)
+        for i, (test_label, test_value) in enumerate(self.tests):
+            tk.Radiobutton(self.root, text=test_label, variable=self.test_var, value=test_value).grid(row=i+1, column=0, columnspan=2)
 
         tk.Button(self.root, text="Далее", command=self.next_window).grid(row=len(self.tests)+1, column=1)
 

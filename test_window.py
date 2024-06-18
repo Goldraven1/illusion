@@ -31,6 +31,23 @@ class Line:
         )
         self.calculate_end()
 
+    def rotate_around_point(self, angle, point):
+        translated_org = Vector2D(self.org.x - point.x, self.org.y - point.y)
+        translated_end = Vector2D(self.end.x - point.x, self.end.y - point.y)
+        
+        rad = math.radians(angle)
+        rotated_org = Vector2D(
+            translated_org.x * math.cos(rad) - translated_org.y * math.sin(rad),
+            translated_org.x * math.sin(rad) + translated_org.y * math.cos(rad)
+        )
+        rotated_end = Vector2D(
+            translated_end.x * math.cos(rad) - translated_end.y * math.sin(rad),
+            translated_end.x * math.sin(rad) + translated_end.y * math.cos(rad)
+        )
+        
+        self.org = Vector2D(rotated_org.x + point.x, rotated_org.y + point.y)
+        self.end = Vector2D(rotated_end.x + point.x, rotated_end.y + point.y)
+
     def draw(self, canvas, color='black', width=1):
         canvas.create_line(self.org.x, self.org.y, self.end.x, self.end.y, fill=color, width=width)
 
@@ -46,7 +63,7 @@ class Line:
         if div == 0:
             return None
 
-        d = (det([line1.org.x, line1.org.y], [line1.end.x, line1.end.y]), det([line2.org.x, line2.org.y], [line2.end.x, line2.end.y]))
+        d = (det([line1.org.x, line1.end.x], [line1.org.y, line1.end.y]), det([line2.org.x, line2.end.x], [line2.org.y, line2.end.y]))
         x = det(d, xdiff) / div
         y = det(d, ydiff) / div
         return Vector2D(x, y)
@@ -95,6 +112,7 @@ class PoggendorffIllusion(tk.Frame):
 
         self.countdown_running = False
 
+        self.continuous_line_y = self.canvas_size.y / 2  # Initialize continuous line's Y position
         self.create_widgets()
         self.draw_illusion(sliderCreate=True)
 
@@ -132,11 +150,10 @@ class PoggendorffIllusion(tk.Frame):
         self.slider_beta.set(self.beta)
         self.slider_beta.pack(fill='x', pady=5)
 
-    def draw_illusion(self, line_pos=360, sliderCreate=False):
+    def draw_illusion(self, sliderCreate=False):
         self.canvas.delete('all')
         self.canvas_center = Vector2D(self.canvas_size.x / 2, self.canvas_size.y / 2)
 
-        # Вращение вертикальных линий вокруг центра холста
         line1 = Line(Vector2D(self.canvas_center.x, self.canvas_center.y - self.vert_length / 2), Vector2D(0, 1), self.vert_length)
         self.line2 = Line(Vector2D(self.canvas_center.x + self.w_param, self.canvas_center.y - self.vert_length / 2), Vector2D(0, 1), self.vert_length)
         
@@ -148,10 +165,12 @@ class PoggendorffIllusion(tk.Frame):
 
         main_line = Line(Vector2D(self.canvas_center.x, self.canvas_center.y), Vector2D(-1, 0), 50)
         main_line.rotate(self.alpha)
+        main_line.rotate_around_point(self.beta, self.canvas_center)
         main_line.draw(self.canvas, color=self.line_colours[0], width=2)
 
-        self.continuous_line = Line(Vector2D(self.canvas_center.x + self.w_param, 0 + line_pos), Vector2D(1, 0), 50)
+        self.continuous_line = Line(Vector2D(self.canvas_center.x + self.w_param, self.continuous_line_y), Vector2D(1, 0), 50)
         self.continuous_line.rotate(self.alpha)
+        self.continuous_line.rotate_around_point(self.beta, self.canvas_center)
         self.subject_response = self.continuous_line.org
         self.continuous_line.draw(self.canvas, color=self.line_colours[0], width=2)
 
@@ -171,7 +190,7 @@ class PoggendorffIllusion(tk.Frame):
 
         if sliderCreate:
             self.slider = tk.Scale(self.interaction_panel, from_=0 + self.canvas_center.y - self.vert_length / 2, to=self.canvas_center.y + self.vert_length / 2, orient='horizontal', command=self.adjust_line)
-            self.slider.set(self.canvas_center.y)
+            self.slider.set(self.continuous_line_y)
             self.slider.pack(fill='x', pady=24)
             self.slider.takefocus = True
 
@@ -187,8 +206,9 @@ class PoggendorffIllusion(tk.Frame):
         self.w_param = int(value)
         self.draw_illusion()
 
-    def adjust_line(self, value):          
-        self.draw_illusion(int(value))
+    def adjust_line(self, value):
+        self.continuous_line_y = int(value)
+        self.draw_illusion()
 
     def submit_data(self):
         if self.intersection is None:

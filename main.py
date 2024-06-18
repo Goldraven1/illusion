@@ -1,7 +1,8 @@
 import tkinter as tk
 from login_window import LoginWindow
 from test_selection_window import TestSelectionWindow
-from test_window import PoggendorffIllusion ,Vector2D
+from test_window import PoggendorffIllusion, Vector2D
+from muller_lyer_illusion import MullerLyerIllusion
 
 class App:
     def __init__(self, root):
@@ -18,7 +19,13 @@ class App:
 
     def show_test_window(self, test_type):
         self.clear_window()
-        self.test_window = PoggendorffIllusion(self.root, user_id=1)  # Передаем только root и user_id
+        if test_type == "Poggendorff":
+            self.test_window = PoggendorffIllusion(self.root, user_id=1)
+        elif test_type == "MullerLyer":
+            self.test_window = MullerLyerIllusion(self.root, user_id=1)
+        elif test_type == "VerticalHorizontal":
+            # Поскольку реализация этого теста отсутствует, вы можете добавить его здесь.
+            pass
         self.test_window.pack(fill='both', expand=True)
 
     def clear_window(self):
