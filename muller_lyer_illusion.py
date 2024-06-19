@@ -1,6 +1,10 @@
+# muller_lyer_illusion.py
+
 import tkinter as tk
-from tkinter import messagebox
 import math
+import random
+from database import Database
+from configt import DB_CONFIG
 
 def pixel_to_mm(pixel, dpi, scale):
     return pixel / dpi * 25.4 * scale
@@ -11,10 +15,10 @@ class Vector2D:
         self.y = y
 
     def __add__(self, other):
-        return Vector2D(self.x + other.x, self.y + other.y)
+        return Vector2D(self.x + other.x, self.y + self.y)
 
     def __sub__(self, other):
-        return Vector2D(self.x - other.x, self.y - other.y)
+        return Vector2D(self.x - other.x, self.y - self.y)
 
     def __mul__(self, param):
         if isinstance(param, Vector2D):
@@ -43,51 +47,18 @@ class Circle:
         canvas.create_oval(points[0].x, points[0].y, points[1].x, points[1].y, outline=color, fill=fill, width=width)
 
 class MullerLyerIllusion(tk.Frame):
-    illusions = [
-        {
-            "r_param": 10,
-            "d_param": 45,
-            "alpha": 0,
-            "circle_fill": ["blue", "blue", "red"],
-            "circle_outline": ["black", "black", "black"],
-            "repeat": 2
-        },
-        {
-            "r_param": 5,
-            "d_param": 23,
-            "alpha": 0,
-            "circle_fill": ["blue", "blue", "red"],
-            "circle_outline": ["black", "black", "black"],
-            "repeat": 2
-        },
-        {
-            "r_param": 24,
-            "d_param": 63,
-            "alpha": 0,
-            "circle_fill": ["blue", "blue", "red"],
-            "circle_outline": ["black", "black", "black"],
-            "repeat": 2
-        }
-    ]
-    illNum = 0
-    r_param = 10
-    d_param = 45
-    alpha = 0
-    user_id = None
-    circles_fill = ['blue', 'blue', 'red']
-    circles_outline = ['black', 'black', 'black']
+    total_time_limit = 20  # Общий лимит времени в секундах
 
-    def __init__(self, master, user_id: int, next_window_callback):
+    def __init__(self, master, app, user_id: int, is_admin=False):
         super().__init__(master)
+        self.app = app
         self.user_id = user_id
-        self.next_window_callback = next_window_callback
+        self.is_admin = is_admin
+        self.admin_controls_visible = is_admin
+        self.test_started = False  # Флаг для отслеживания начала теста
         self.pack(fill='both', expand=True)
 
-        self.illusions = [
-            {"r_param": 10, "d_param": 45, "alpha": 0, "circle_fill": ["blue", "blue", "red"], "circle_outline": ["black", "black", "black"], "repeat": 2},
-            {"r_param": 5, "d_param": 23, "alpha": 0, "circle_fill": ["blue", "blue", "red"], "circle_outline": ["black", "black", "black"], "repeat": 2},
-            {"r_param": 24, "d_param": 63, "alpha": 0, "circle_fill": ["blue", "blue", "red"], "circle_outline": ["black", "black", "black"], "repeat": 2}
-        ]
+        self.illusions = self.generate_random_illusions(3)
         self.illusion_index = 0
         self.load_next_illusion()
 
@@ -97,8 +68,27 @@ class MullerLyerIllusion(tk.Frame):
         self.interaction_panel = tk.Frame(self)
         self.interaction_panel.pack(side='right', fill='y', expand=True)
 
+        self.db = Database(DB_CONFIG)
+        self.db.create_tables()
+
+        self.countdown_running = False
+
         self.create_widgets()
         self.draw_illusion()
+
+    def generate_random_illusions(self, num_illusions):
+        illusions = []
+        for _ in range(num_illusions):
+            illusion = {
+                "r_param": random.randint(10, 25),
+                "d_param": random.randint(20, 50),
+                "alpha": 0,
+                "circle_fill": ["blue", "blue", "red"],
+                "circle_outline": ["black", "black", "black"],
+                "repeat": 2
+            }
+            illusions.append(illusion)
+        return illusions
 
     def load_next_illusion(self):
         if self.illusion_index < len(self.illusions):
@@ -112,28 +102,56 @@ class MullerLyerIllusion(tk.Frame):
             self.switchPage()
 
     def create_widgets(self):
-        self.timer = tk.Label(self.interaction_panel, font=('Helvetica', 48), text="00:00:00")
+        self.timer = tk.Label(self.interaction_panel, font=('Helvetica', 48), text="00:20")
         self.timer.pack(fill='x')
-        self.counter = tk.Label(self.interaction_panel, text=f'Test number {self.illNum + 1} out of {len(self.illusions)}')
+        self.counter = tk.Label(self.interaction_panel, text=f'Тест номер {self.illusion_index + 1} из {len(self.illusions)}')
         self.counter.pack(fill='x')
 
-        self.NextButton = tk.Button(self.interaction_panel, text='Submit', command=self.submit_data)
+        self.StartButton = tk.Button(self.interaction_panel, text='Начать тест', command=self.start_test)
+        self.StartButton.pack(fill='x', pady=24)
+
+        self.NextButton = tk.Button(self.interaction_panel, text='Отправить', command=self.submit_data, state=tk.DISABLED)
         self.NextButton.pack(fill='x', pady=24)
 
-        tk.Label(self.interaction_panel, text='Radius of the circles').pack(pady=5)
-        self.slider_r = tk.Scale(self.interaction_panel, from_=5, to=30, orient='horizontal', command=self.adjust_r)
-        self.slider_r.set(self.r_param)
-        self.slider_r.pack(fill='x', pady=5)
+        self.admin_toggle_button = tk.Button(self.interaction_panel, text='Переключить режим админа', command=self.toggle_admin_controls)
+        self.admin_toggle_button.pack(fill='x', pady=5)
 
-        tk.Label(self.interaction_panel, text='Distance between circles').pack(pady=5)
-        self.slider_d = tk.Scale(self.interaction_panel, from_=20, to=100, orient='horizontal', command=self.adjust_d)
-        self.slider_d.set(self.d_param)
-        self.slider_d.pack(fill='x', pady=5)
-
-        tk.Label(self.interaction_panel, text='Adjust circle position').pack(pady=5)
-        self.slider_circle = tk.Scale(self.interaction_panel, from_=256 - self.d_param, to=0, orient='horizontal', command=self.adjust_circle)
-        self.slider_circle.set(70)
+        self.circle_pos_label = tk.Label(self.interaction_panel, text='Положение окружности')
+        self.circle_pos_label.pack(pady=5)
+        self.slider_circle = tk.Scale(self.interaction_panel, from_=0, to=200, orient='horizontal', command=self.adjust_circle)
         self.slider_circle.pack(fill='x', pady=5)
+
+        self.admin_controls = []
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Радиус окружностей'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=10, to=25, orient='horizontal', command=self.adjust_r))
+        self.admin_controls[-1].set(self.r_param)
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Расстояние между окружностями'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=20, to=50, orient='horizontal', command=self.adjust_d))
+        self.admin_controls[-1].set(self.d_param)
+
+        self.update_admin_controls_visibility()
+
+    def toggle_admin_controls(self):
+        if self.is_admin:
+            self.admin_controls_visible = not self.admin_controls_visible
+            self.update_admin_controls_visibility()
+        else:
+            tk.messagebox.showerror("Ошибка", "Вы не имеете прав администратора!")
+
+    def update_admin_controls_visibility(self):
+        for control in self.admin_controls:
+            if self.admin_controls_visible:
+                control.pack(fill='x', pady=5)
+            else:
+                control.pack_forget()
+
+    def start_test(self):
+        self.test_started = True
+        self.StartButton.config(state=tk.DISABLED)
+        self.NextButton.config(state=tk.NORMAL)
+        self.start_countdown(self.total_time_limit)
 
     def draw_illusion(self, circle_pos=0):
         self.canvas.delete('all')
@@ -157,15 +175,18 @@ class MullerLyerIllusion(tk.Frame):
         third_circle.draw(self.canvas, color=self.circles_outline[2], fill=self.circles_fill[2], width=1)
 
     def adjust_r(self, value):
-        self.r_param = int(value)
-        self.draw_illusion()
+        if self.test_started:
+            self.r_param = int(value)
+            self.draw_illusion()
 
     def adjust_d(self, value):
-        self.d_param = int(value)
-        self.draw_illusion()
+        if self.test_started:
+            self.d_param = int(value)
+            self.draw_illusion()
 
     def adjust_circle(self, value):
-        self.draw_illusion(int(value))
+        if self.test_started:
+            self.draw_illusion(int(value))
 
     def submit_data(self):
         dpi = self.winfo_fpixels('1i')
@@ -176,9 +197,7 @@ class MullerLyerIllusion(tk.Frame):
         absolute_error = L_ref - L_test
         absolute_error_mm = pixel_to_mm(absolute_error, dpi, 2)
 
-        messagebox.showinfo("Result", f'ΔS = {absolute_error:.2f} pixels ({absolute_error_mm:.2f} mm)')
-
-        print(f'ΔS = {absolute_error:.2f} pixels ({absolute_error_mm:.2f} mm)')
+        self.db.insert_muller_lyer_result(self.user_id, self.illusion_index, absolute_error_mm)
     
         self.illusion_index += 1
         self.load_next_illusion()
@@ -186,10 +205,41 @@ class MullerLyerIllusion(tk.Frame):
         if self.illusion_index < len(self.illusions):
             self.draw_illusion()
             self.illNum += 1
-            self.counter.configure(text=f'Test number {self.illNum + 1} out of {len(self.illusions)}')
+            self.counter.configure(text=f'Тест номер {self.illNum + 1} из {len(self.illusions)}')
         else:
             self.switchPage()
 
     def switchPage(self):
+        self.stop_countdown()
         self.pack_forget()
-        self.next_window_callback()
+        self.db.close()
+        self.app.show_test_selection_window(self.user_id)
+
+    def start_countdown(self, time_remaining):
+        self.countdown_running = True
+        self.countdown(time_remaining)
+
+    def stop_countdown(self):
+        self.countdown_running = False
+
+    def countdown(self, time_remaining):
+        if time_remaining > 0 and self.countdown_running:
+            mins, secs = divmod(time_remaining, 60)
+            timeformat = '{:02d}:{:02d}'.format(mins, secs)
+            self.timer.configure(text=timeformat)
+            self.after(1000, self.countdown, time_remaining - 1)
+        elif not self.countdown_running:
+            self.timer.configure(text="Таймер остановлен")
+        else:
+            self.timer.configure(text="Время вышло!")
+            self.times_up()
+
+    def times_up(self):
+        self.switchPage()
+
+# Пример использования
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = MullerLyerIllusion(root, None, user_id=1, is_admin=True)  # Передаем None вместо app, так как нет экземпляра App
+    app.pack(fill="both", expand=True)
+    root.mainloop()

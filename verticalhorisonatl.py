@@ -1,6 +1,10 @@
+# vertical_horizontal_illusion.py
+
 import tkinter as tk
-from tkinter import messagebox
 import math
+import random
+from database import Database
+from configt import DB_CONFIG
 
 def pixel_to_mm(pixel, dpi, scale):
     return pixel / dpi * 25.4 * scale
@@ -109,39 +113,18 @@ class Circle:
         canvas.create_oval(points[0].x, points[0].y, points[1].x, points[1].y, outline=color, fill=fill, width=width)
 
 class VerticalHorizontalIllusion(tk.Frame):
-    illusions = [
-        {
-            "l_param": 200,
-            "h_param": 200,
-            "d_param": 0,
-            "alpha": 0,
-            "beta": 0,
-            "lines_colour": ["blue", "red"]
-        },
-        {
-            "l_param": 100,
-            "h_param": 150,
-            "d_param": 20,
-            "alpha": 15,
-            "beta": 30,
-            "lines_colour": ["green", "blue"]
-        },
-        {
-            "l_param": 250,
-            "h_param": 100,
-            "d_param": -30,
-            "alpha": 45,
-            "beta": 60,
-            "lines_colour": ["blue", "red"]
-        }
-    ]
+    total_time_limit = 20  # Общий лимит времени в секундах
     
-    def __init__(self, master, user_id: int, next_window_callback):
+    def __init__(self, master, app, user_id: int, is_admin=False):
         super().__init__(master)
+        self.app = app
         self.user_id = user_id
-        self.next_window_callback = next_window_callback
+        self.is_admin = is_admin
+        self.admin_controls_visible = is_admin
+        self.test_started = False  # Флаг для отслеживания начала теста
         self.pack(fill='both', expand=True)
 
+        self.illusions = self.generate_random_illusions(3)
         self.illusion_index = 0
         self.load_next_illusion()
 
@@ -151,8 +134,27 @@ class VerticalHorizontalIllusion(tk.Frame):
         self.interaction_panel = tk.Frame(self)
         self.interaction_panel.pack(side='right', fill='y', expand=True)
 
+        self.db = Database(DB_CONFIG)
+        self.db.create_tables()
+
+        self.countdown_running = False
+
         self.create_widgets()
         self.draw_illusion()
+
+    def generate_random_illusions(self, num_illusions):
+        illusions = []
+        for _ in range(num_illusions):
+            illusion = {
+                "l_param": random.randint(50, 150),
+                "h_param": random.randint(50, 150),
+                "d_param": random.randint(-30, 30),
+                "alpha": random.uniform(-20, 20),
+                "beta": random.uniform(-20, 20),
+                "lines_colour": [random.choice(["blue", "green", "red"]), random.choice(["blue", "green", "red"])]
+            }
+            illusions.append(illusion)
+        return illusions
 
     def load_next_illusion(self):
         if self.illusion_index < len(self.illusions):
@@ -167,25 +169,75 @@ class VerticalHorizontalIllusion(tk.Frame):
             self.switchPage()
 
     def create_widgets(self):
-        self.timer = tk.Label(self.interaction_panel, font=('Helvetica', 48), text="00:00:00")
+        self.timer = tk.Label(self.interaction_panel, font=('Helvetica', 48), text="00:20")
         self.timer.pack(fill='x')
-        self.counter = tk.Label(self.interaction_panel, text=f'Test number {self.illusion_index + 1} out of {len(self.illusions)}')
+        self.counter = tk.Label(self.interaction_panel, text=f'Тест номер {self.illusion_index + 1} из {len(self.illusions)}')
         self.counter.pack(fill='x')
 
-        self.NextButton = tk.Button(self.interaction_panel, text='Submit', command=self.submit_data)
+        self.StartButton = tk.Button(self.interaction_panel, text='Начать тест', command=self.start_test)
+        self.StartButton.pack(fill='x', pady=24)
+
+        self.NextButton = tk.Button(self.interaction_panel, text='Отправить', command=self.submit_data, state=tk.DISABLED)
         self.NextButton.pack(fill='x', pady=24)
 
-        tk.Label(self.interaction_panel, text='Length of the vertical line').pack(pady=5)
-        self.slider_length = tk.Scale(self.interaction_panel, from_=10, to=400, orient='horizontal', command=self.adjust_length)
-        self.slider_length.set(35)
-        self.slider_length.pack(fill='x', pady=5)
+        self.admin_toggle_button = tk.Button(self.interaction_panel, text='Переключить режим админа', command=self.toggle_admin_controls)
+        self.admin_toggle_button.pack(fill='x', pady=5)
 
-    def draw_illusion(self, length=35):
+        self.height_label = tk.Label(self.interaction_panel, text='Высота вертикальной линии')
+        self.height_label.pack(pady=5)
+        self.slider_height = tk.Scale(self.interaction_panel, from_=50, to=400, orient='horizontal', command=self.adjust_vertical_height)
+        self.slider_height.set(self.h_param)
+        self.slider_height.pack(fill='x', pady=5)
+
+        self.admin_controls = []
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Длина горизонтальной линии'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=50, to=400, orient='horizontal', command=self.adjust_horizontal_length))
+        self.admin_controls[-1].set(self.l_param)
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Положение вертикальной линии'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=-100, to=100, orient='horizontal', command=self.adjust_vertical_position))
+        self.admin_controls[-1].set(self.d_param)
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Угол вертикальной линии'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=-90, to=90, orient='horizontal', command=self.adjust_vertical_angle))
+        self.admin_controls[-1].set(self.alpha)
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Угол иллюзии'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=-90, to=90, orient='horizontal', command=self.adjust_illusion_angle))
+        self.admin_controls[-1].set(self.beta)
+
+        self.update_admin_controls_visibility()
+
+    def toggle_admin_controls(self):
+        if self.is_admin:
+            self.admin_controls_visible = not self.admin_controls_visible
+            self.update_admin_controls_visibility()
+        else:
+            tk.messagebox.showerror("Ошибка", "Вы не имеете прав администратора!")
+
+    def update_admin_controls_visibility(self):
+        for control in self.admin_controls:
+            if self.admin_controls_visible:
+                control.pack(fill='x', pady=5)
+            else:
+                control.pack_forget()
+
+    def start_test(self):
+        self.test_started = True
+        self.StartButton.config(state=tk.DISABLED)
+        self.NextButton.config(state=tk.NORMAL)
+        self.start_countdown(self.total_time_limit)
+
+    def draw_illusion(self, length=None):
         self.canvas.delete('all')
 
         canvas_width = 700
         canvas_height = 500
         self.ill_center = Vector2D(canvas_width // 2, canvas_height // 2)
+
+        if length is None:
+            length = self.h_param
 
         horizontal_line = Line(Vector2D(self.ill_center.x - self.l_param / 2, self.ill_center.y), Vector2D(1, 0), self.l_param)
         self.vertical_line = Line(Vector2D(self.ill_center.x + self.d_param, self.ill_center.y), Vector2D(0, -1), length)
@@ -201,8 +253,30 @@ class VerticalHorizontalIllusion(tk.Frame):
 
         self.canvas.scale('all', 0, 0, 2, 2)
 
-    def adjust_length(self, value):
-        self.draw_illusion(int(value))
+    def adjust_horizontal_length(self, value):
+        if self.test_started:
+            self.l_param = int(value)
+            self.draw_illusion()
+
+    def adjust_vertical_height(self, value):
+        if self.test_started:
+            self.h_param = int(value)
+            self.draw_illusion()
+
+    def adjust_vertical_position(self, value):
+        if self.test_started:
+            self.d_param = int(value)
+            self.draw_illusion()
+
+    def adjust_vertical_angle(self, value):
+        if self.test_started:
+            self.alpha = int(value)
+            self.draw_illusion()
+
+    def adjust_illusion_angle(self, value):
+        if self.test_started:
+            self.beta = int(value)
+            self.draw_illusion()
 
     def submit_data(self):
         dpi = self.winfo_fpixels('1i')
@@ -213,30 +287,48 @@ class VerticalHorizontalIllusion(tk.Frame):
         absolute_error = L_hor - L_vert
         absolute_error_mm = pixel_to_mm(absolute_error, dpi, 2)
 
-        messagebox.showinfo("Result", f'Δl = {absolute_error:.2f} pixels ({absolute_error_mm:.2f} mm)')
-
-        print(f'Δl = {absolute_error:.2f} pixels ({absolute_error_mm:.2f} mm)')
+        self.db.insert_vertical_horizontal_result(self.user_id, self.illusion_index, absolute_error_mm)
     
         self.illusion_index += 1
         self.load_next_illusion()
 
         if self.illusion_index < len(self.illusions):
             self.draw_illusion()
-            self.counter.configure(text=f'Test number {self.illusion_index + 1} out of {len(self.illusions)}')
+            self.counter.configure(text=f'Tест номер {self.illusion_index + 1} из {len(self.illusions)}')
         else:
             self.switchPage()
 
     def switchPage(self):
+        self.stop_countdown()
         self.pack_forget()
-        self.next_window_callback()
+        self.db.close()
+        self.app.show_test_selection_window(self.user_id)
 
+    def start_countdown(self, time_remaining):
+        self.countdown_running = True
+        self.countdown(time_remaining)
+
+    def stop_countdown(self):
+        self.countdown_running = False
+
+    def countdown(self, time_remaining):
+        if time_remaining > 0 and self.countdown_running:
+            mins, secs = divmod(time_remaining, 60)
+            timeformat = '{:02d}:{:02d}'.format(mins, secs)
+            self.timer.configure(text=timeformat)
+            self.after(1000, self.countdown, time_remaining - 1)
+        elif not self.countdown_running:
+            self.timer.configure(text="Таймер остановлен")
+        else:
+            self.timer.configure(text="Время вышло!")
+            self.times_up()
+
+    def times_up(self):
+        self.switchPage()
+
+# Пример использования
 if __name__ == "__main__":
-    def show_test_selection_window():
-        root = tk.Tk()
-        tk.Label(root, text="Выберите тест").pack()
-        root.mainloop()
-
     root = tk.Tk()
-    app = VerticalHorizontalIllusion(master=root, user_id=1, next_window_callback=show_test_selection_window)
+    app = VerticalHorizontalIllusion(root, None, user_id=1, is_admin=True)  # Передаем None вместо app, так как нет экземпляра App
     app.pack(fill="both", expand=True)
     root.mainloop()
