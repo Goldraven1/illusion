@@ -31,9 +31,9 @@ class TestSelectionWindow:
         tk.Label(self.frame, text="Выберите тип теста:", font=('Helvetica', 24)).grid(row=0, column=0, columnspan=6, pady=30)
 
         self.tests = [
-            ("Иллюзия Поггендорфа", "Poggendorff", "C:/Users/Profil1/Desktop/проект/illusion/POGGENDORF.png"),
-            ("Вертикально-горизонтальная иллюзия", "VerticalHorizontal", "C:/Users/Profil1/Desktop/проект/illusion/VERTICAL.png"),
-            ("Иллюзия расстояния между краями окружностей", "MullerLyer", "C:/Users/Profil1/Desktop/проект/illusion/MULLER.png")
+            ("Иллюзия Поггендорфа", "Poggendorff", "POGGENDORF.png"),
+            ("Вертикально-горизонтальная иллюзия", "VerticalHorizontal", "VERTICAL.png"),
+            ("Иллюзия расстояния между краями окружностей", "MullerLyer", "MULLER.png")
         ]
         self.test_var = tk.StringVar(value=self.tests[0][1])
 

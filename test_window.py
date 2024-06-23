@@ -1,9 +1,6 @@
-# poggendorff_illusion.py
-
 import tkinter as tk
 from tkinter import messagebox
 import math
-import random
 from database import Database
 from configt import DB_CONFIG
 
@@ -76,46 +73,52 @@ class Line:
         y = det(d, ydiff) / div
         return Vector2D(x, y)
 
-class PoggendorffIllusion(tk.Frame):
-    w_param = 10
-    alpha = 45
-    beta = 0
-    vert_length = 100
-    illNum = 0
-    intersection = Vector2D(0, 0)
-    subject_response = Vector2D(0, 0)
-    canvas_size = Vector2D(1024 * 1.5, 1024)
-    user_id = None
+class Illusion:
+    def __init__(self, w_param=10, alpha=45, beta=0, vert_length=100):
+        self.w_param = w_param
+        self.alpha = alpha
+        self.beta = beta
+        self.vert_length = vert_length
 
-    scale = 7
-    line_colours = ['red', 'blue']
+class PoggendorffIllusion(tk.Frame):
+    # Заданные параметры
+    width_params = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55]  # мм
+    angle_params = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150]  # градусов
+    rotation_params = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5]  # градусов
 
     def __init__(self, master, app, user_id, is_admin=False):
         super().__init__(master)
         self.app = app
-        self.pack(fill='both', expand=True)
+        self.user_id = user_id
+        self.is_admin = is_admin
+
+        self.num_tests = 5
+        self.time_limit = 20
+        self.illNum = 0
+        self.scale = 7
+        self.line_colours = ['red', 'blue']
 
         self.debug = False
         self.timerOpt = True
         self.showTimer = True
-        self.time_limit = 20  # Установить лимит времени на 20 секунд
+        self.test_started = False
+        self.admin_controls_visible = is_admin
 
-        self.user_id = user_id
-        self.is_admin = is_admin
-        self.admin_controls_visible = is_admin  # Флаг для отслеживания состояния видимости админских элементов
-        self.test_started = False  # Флаг для отслеживания начала теста
+        self.canvas_size = Vector2D(1024 * 1.5, 1024)
+        self.continuous_line_y = self.canvas_size.y / 2
+        self.intersection = Vector2D(0, 0)
+        self.subject_response = Vector2D(0, 0)
 
-        self.illusions = self.generate_random_illusions(3)
-
+        self.illusions = self.generate_predefined_illusions()
         self.illusion_index = 0
         self.load_next_illusion()
 
+        self.pack(fill='both', expand=True)
         screen_width = self.master.winfo_screenwidth() - 512
         screen_height = self.master.winfo_screenheight()
 
         self.canvas = tk.Canvas(self, width=screen_width, height=screen_height, bg="white")
         self.canvas.pack(side='left', fill='both', expand=True)
-
         self.interaction_panel = tk.Frame(self)
         self.interaction_panel.pack(side='right', fill='y', expand=True)
 
@@ -124,30 +127,26 @@ class PoggendorffIllusion(tk.Frame):
 
         self.countdown_running = False
 
-        self.continuous_line_y = self.canvas_size.y / 2  # Initialize continuous line's Y position
         self.create_widgets()
         self.draw_illusion(sliderCreate=True)
 
-    def generate_random_illusions(self, num_illusions):
+    def generate_predefined_illusions(self):
+        # Заранее определенные параметры
         illusions = []
-        for _ in range(num_illusions):
-            illusion = {
-                "w_param": random.randint(10, 50),  # Уменьшили до 50
-                "alpha": random.uniform(-45, 45),  # Ограничили диапазон
-                "beta": random.uniform(-45, 45),  # Ограничили диапазон
-                "vert_length": random.randint(50, 150),  # Ограничили до 150
-                "repeat": random.randint(1, 3)  # Ограничили до 3 повторений
-            }
-            illusions.append(illusion)
-        return illusions
+        for w in self.width_params:
+            for alpha in self.angle_params:
+                for beta in self.rotation_params:
+                    illusion = Illusion(w, alpha, beta, 100)
+                    illusions.append(illusion)
+        return illusions[:self.num_tests]
 
     def load_next_illusion(self):
         if self.illusion_index < len(self.illusions):
             illusion = self.illusions[self.illusion_index]
-            self.w_param = illusion["w_param"]
-            self.alpha = illusion["alpha"]
-            self.beta = illusion["beta"]
-            self.vert_length = illusion["vert_length"]
+            self.w_param = illusion.w_param
+            self.alpha = illusion.alpha
+            self.beta = illusion.beta
+            self.vert_length = illusion.vert_length
         else:
             self.switchPage()
 
@@ -156,7 +155,7 @@ class PoggendorffIllusion(tk.Frame):
         self.timer.pack(fill='x')
         self.counter = tk.Label(self.interaction_panel, text=f'Тест номер {self.illNum + 1} из {len(self.illusions)}')
         self.counter.pack(fill='x')
-        
+
         self.StartButton = tk.Button(self.interaction_panel, text='Начать тест', command=self.start_test)
         self.StartButton.pack(fill='x', pady=24)
 
@@ -168,8 +167,16 @@ class PoggendorffIllusion(tk.Frame):
 
         self.admin_controls = []
 
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Количество тестов'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=1, to=10, orient='horizontal', command=self.adjust_num_tests))
+        self.admin_controls[-1].set(self.num_tests)
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Лимит времени (секунды)'))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=10, to=300, orient='horizontal', command=self.adjust_time_limit))
+        self.admin_controls[-1].set(self.time_limit)
+
         self.admin_controls.append(tk.Label(self.interaction_panel, text='Ширина стены'))
-        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=10, to=100, orient='horizontal', command=self.adjust_w))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=10, to=60, orient='horizontal', command=self.adjust_w))
         self.admin_controls[-1].set(self.w_param)
 
         self.admin_controls.append(tk.Label(self.interaction_panel, text='Угол наклона диагонали'))
@@ -177,7 +184,7 @@ class PoggendorffIllusion(tk.Frame):
         self.admin_controls[-1].set(self.alpha)
 
         self.admin_controls.append(tk.Label(self.interaction_panel, text='Угол иллюзии'))
-        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=0, to=360, orient='horizontal', command=self.adjust_beta))
+        self.admin_controls.append(tk.Scale(self.interaction_panel, from_=0, to=360, orient='horizontal', resolution=22.5, command=self.adjust_beta))
         self.admin_controls[-1].set(self.beta)
 
         self.update_admin_controls_visibility()
@@ -196,6 +203,14 @@ class PoggendorffIllusion(tk.Frame):
             else:
                 control.pack_forget()
 
+    def adjust_num_tests(self, value):
+        self.num_tests = int(value)
+        self.illusions = self.generate_predefined_illusions()
+        self.counter.configure(text=f'Тест номер {self.illNum + 1} из {len(self.illusions)}')
+
+    def adjust_time_limit(self, value):
+        self.time_limit = int(value)
+
     def start_test(self):
         self.test_started = True
         self.StartButton.config(state=tk.DISABLED)
@@ -208,7 +223,7 @@ class PoggendorffIllusion(tk.Frame):
 
         line1 = Line(Vector2D(self.canvas_center.x, self.canvas_center.y - self.vert_length / 2), Vector2D(0, 1), self.vert_length)
         self.line2 = Line(Vector2D(self.canvas_center.x + self.w_param, self.canvas_center.y - self.vert_length / 2), Vector2D(0, 1), self.vert_length)
-        
+
         line1.rotate_around_point(self.beta, self.canvas_center)
         self.line2.rotate_around_point(self.beta, self.canvas_center)
 
@@ -272,9 +287,9 @@ class PoggendorffIllusion(tk.Frame):
             return
 
         absolute_error = (self.intersection - self.subject_response).magnitude()
-    
+
         self.db.insert_poggendorff_result(self.user_id, self.illusion_index, absolute_error)
-    
+
         self.illusion_index += 1
         self.load_next_illusion()
 

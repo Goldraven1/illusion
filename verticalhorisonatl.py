@@ -113,8 +113,6 @@ class Circle:
         canvas.create_oval(points[0].x, points[0].y, points[1].x, points[1].y, outline=color, fill=fill, width=width)
 
 class VerticalHorizontalIllusion(tk.Frame):
-    total_time_limit = 20  # Общий лимит времени в секундах
-    
     def __init__(self, master, app, user_id: int, is_admin=False):
         super().__init__(master)
         self.app = app
@@ -124,7 +122,10 @@ class VerticalHorizontalIllusion(tk.Frame):
         self.test_started = False  # Флаг для отслеживания начала теста
         self.pack(fill='both', expand=True)
 
-        self.illusions = self.generate_random_illusions(3)
+        self.num_illusions = 5
+        self.total_time_limit = 20  # Общий лимит времени в секундах
+
+        self.illusions = self.generate_random_illusions(self.num_illusions)
         self.illusion_index = 0
         self.load_next_illusion()
 
@@ -183,13 +184,23 @@ class VerticalHorizontalIllusion(tk.Frame):
         self.admin_toggle_button = tk.Button(self.interaction_panel, text='Переключить режим админа', command=self.toggle_admin_controls)
         self.admin_toggle_button.pack(fill='x', pady=5)
 
+        self.admin_controls = []
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Количество тестов'))
+        self.num_tests_scale = tk.Scale(self.interaction_panel, from_=1, to=10, orient='horizontal', command=self.adjust_num_illusions)
+        self.num_tests_scale.set(self.num_illusions)
+        self.admin_controls.append(self.num_tests_scale)
+
+        self.admin_controls.append(tk.Label(self.interaction_panel, text='Лимит времени (секунды)'))
+        self.time_limit_scale = tk.Scale(self.interaction_panel, from_=10, to=60, orient='horizontal', command=self.adjust_time_limit)
+        self.time_limit_scale.set(self.total_time_limit)
+        self.admin_controls.append(self.time_limit_scale)
+
         self.height_label = tk.Label(self.interaction_panel, text='Высота вертикальной линии')
         self.height_label.pack(pady=5)
         self.slider_height = tk.Scale(self.interaction_panel, from_=50, to=400, orient='horizontal', command=self.adjust_vertical_height)
         self.slider_height.set(self.h_param)
         self.slider_height.pack(fill='x', pady=5)
-
-        self.admin_controls = []
 
         self.admin_controls.append(tk.Label(self.interaction_panel, text='Длина горизонтальной линии'))
         self.admin_controls.append(tk.Scale(self.interaction_panel, from_=50, to=400, orient='horizontal', command=self.adjust_horizontal_length))
@@ -277,6 +288,17 @@ class VerticalHorizontalIllusion(tk.Frame):
         if self.test_started:
             self.beta = int(value)
             self.draw_illusion()
+
+    def adjust_num_illusions(self, value):
+        self.num_illusions = int(value)
+        self.illusions = self.generate_random_illusions(self.num_illusions)
+        self.illusion_index = 0
+        self.load_next_illusion()
+        self.counter.configure(text=f'Тест номер {self.illusion_index + 1} из {len(self.illusions)}')
+
+    def adjust_time_limit(self, value):
+        self.total_time_limit = int(value)
+        self.timer.configure(text=f"{self.total_time_limit:02d}:00")
 
     def submit_data(self):
         dpi = self.winfo_fpixels('1i')
