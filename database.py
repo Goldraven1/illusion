@@ -73,23 +73,19 @@ class Database:
         )
         self.connection.commit()
 
-    def fetch_muller_lyer_results(self, user_id):
+    def fetch_user_with_results(self, user_id):
         self.cursor.execute(
-            sql.SQL("SELECT illusion_index, absolute_error_mm FROM muller_lyer_results WHERE user_id = %s"),
-            [user_id]
-        )
-        return self.cursor.fetchall()
-
-    def fetch_vertical_horizontal_results(self, user_id):
-        self.cursor.execute(
-            sql.SQL("SELECT illusion_index, absolute_error_mm FROM vertical_horizontal_results WHERE user_id = %s"),
-            [user_id]
-        )
-        return self.cursor.fetchall()
-
-    def fetch_poggendorff_results(self, user_id):
-        self.cursor.execute(
-            sql.SQL("SELECT illusion_index, absolute_error FROM poggendorff_results WHERE user_id = %s"),
+            sql.SQL("""
+            SELECT u.surname, u.name, u.patronymic, u.gender, u.age,
+                   ml.illusion_index AS ml_illusion_index, ml.absolute_error_mm AS ml_absolute_error_mm,
+                   vh.illusion_index AS vh_illusion_index, vh.absolute_error_mm AS vh_absolute_error_mm,
+                   pg.illusion_index AS pg_illusion_index, pg.absolute_error AS pg_absolute_error
+            FROM users u
+            LEFT JOIN muller_lyer_results ml ON u.id = ml.user_id
+            LEFT JOIN vertical_horizontal_results vh ON u.id = vh.user_id
+            LEFT JOIN poggendorff_results pg ON u.id = pg.user_id
+            WHERE u.id = %s
+            """),
             [user_id]
         )
         return self.cursor.fetchall()

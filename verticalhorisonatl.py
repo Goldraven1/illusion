@@ -1,8 +1,5 @@
-# vertical_horizontal_illusion.py
-
 import tkinter as tk
 import math
-import random
 from database import Database
 from configt import DB_CONFIG
 
@@ -122,10 +119,10 @@ class VerticalHorizontalIllusion(tk.Frame):
         self.test_started = False  # Флаг для отслеживания начала теста
         self.pack(fill='both', expand=True)
 
-        self.num_illusions = 5
+        self.num_illusions = 11
         self.total_time_limit = 20  # Общий лимит времени в секундах
 
-        self.illusions = self.generate_random_illusions(self.num_illusions)
+        self.illusions = self.generate_illusions()
         self.illusion_index = 0
         self.load_next_illusion()
 
@@ -143,16 +140,21 @@ class VerticalHorizontalIllusion(tk.Frame):
         self.create_widgets()
         self.draw_illusion()
 
-    def generate_random_illusions(self, num_illusions):
+    def generate_illusions(self):
         illusions = []
-        for _ in range(num_illusions):
+        
+        L_values = [i * 10 for i in range(1, 12)]  # Исключаем нулевой параметр
+        alpha_values = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165]
+        phi_values = [22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5]
+
+        for i in range(len(L_values)):
             illusion = {
-                "l_param": random.randint(50, 150),
-                "h_param": random.randint(50, 150),
-                "d_param": random.randint(-30, 30),
-                "alpha": random.uniform(-20, 20),
-                "beta": random.uniform(-20, 20),
-                "lines_colour": [random.choice(["blue", "green", "red"]), random.choice(["blue", "green", "red"])]
+                "l_param": L_values[i],
+                "h_param": 100,  # Высота вертикальной линии фиксированная
+                "d_param": 0,    # Положение вертикальной линии фиксированное
+                "alpha": alpha_values[i % len(alpha_values)],
+                "beta": phi_values[i % len(phi_values)],
+                "lines_colour": ["blue", "red"]
             }
             illusions.append(illusion)
         return illusions
@@ -291,7 +293,7 @@ class VerticalHorizontalIllusion(tk.Frame):
 
     def adjust_num_illusions(self, value):
         self.num_illusions = int(value)
-        self.illusions = self.generate_random_illusions(self.num_illusions)
+        self.illusions = self.generate_illusions()
         self.illusion_index = 0
         self.load_next_illusion()
         self.counter.configure(text=f'Тест номер {self.illusion_index + 1} из {len(self.illusions)}')

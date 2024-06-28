@@ -1,7 +1,7 @@
 DB_CONFIG = {
-    'dbname': 'postgres',
+    'dbname': 'illusion',
     'user': 'postgres',
-    'password': 'kWOWtIb_',
-    'host': '176.123.160.78',
+    'password': '123',
+    'host': 'localhost',
     'port': '5432'
 }
